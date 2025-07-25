@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.append(os.getcwd() + r"/myosuite")
 sys.path.append(os.getcwd() + r"/..")
-myosuite_path = "/Users/lisaalexandre/Desktop/StandingBalance/myosuite"
+myosuite_path = r"C:\Users\chery\Documents\McGill_internship\myosuite"
 if myosuite_path not in sys.path:
     sys.path.insert(0, myosuite_path)
 
@@ -38,9 +38,9 @@ parser.add_argument("--seed", type=int, default=0, help="Seed for random number 
 parser.add_argument("--num_envs", type=int, default=16, help="Number of parallel environments")
 parser.add_argument("--env_name", type=str, default="myoTorsoPoseFixed-v0", help="environment name")
 parser.add_argument("--group", type=str, default='testing', help="group name")
-parser.add_argument("--learning_rate", type=float, default=0.0005, help="Learning rate for the optimizer")
+parser.add_argument("--learning_rate", type=float, default=0.0003, help="Learning rate for the optimizer")
 parser.add_argument("--clip_range", type=float, default=0.2, help="Clip range for the policy gradient update")
-parser.add_argument("--algo", type=str, default='PPO', help="algorithm for training")
+parser.add_argument("--algo", type=str, default='SAC', help="algorithm for training")
 
 args = parser.parse_args()
 
@@ -131,7 +131,7 @@ class TensorboardCallback(BaseCallback):
 	
 def main():
 
-    training_steps = 5000000
+    training_steps = 50000000
 
     print('Begin training')
     ENTROPY = 0.01
@@ -144,8 +144,6 @@ def main():
 
     IS_WnB_enabled = False
     env_name = args.env_name
-
-    '''
 
     try:
         import wandb
@@ -178,14 +176,13 @@ def main():
     except ImportError as e:
         pass 
 
-    '''
     
     log_path = './standingBalance/policy_best_model/'+ env_name + '/' + time_now +'/'
     num_cpu = args.num_envs
     env = SubprocVecEnv([make_env(env_name, i, seed=args.seed) for i in range(num_cpu)])
     envs = VecMonitor(env)
 
-    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=380, verbose=1)
+    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=3800, verbose=1)
     eval_callback = EvalCallback(envs, callback_on_new_best=callback_on_best, best_model_save_path=log_path, log_path=log_path, eval_freq=2000, deterministic=True, render=False)
     
 
@@ -199,9 +196,7 @@ def main():
         model = PPO('MlpPolicy', envs, ent_coef=0.01, learning_rate=LR, clip_range=CR, verbose=0, policy_kwargs =policy_kwargs, tensorboard_log=f"runs/{time_now}")
         #model = PPO.load('standingBalance/policy_best_model/' + 'myoSarcTorsoReachFixed-v1' + '/' + loaded_model +'/best_model',  envs, ent_coef=0.001, learning_rate=LR, clip_range=CR, verbose=0, policy_kwargs=policy_kwargs, tensorboard_log="./standingBalance/temp_env_tensorboard/"+env_name)
     elif args.algo == 'SAC':
-        net_shape = [400, 300]
-        policy_kwargs = dict(net_arch=dict(pi=net_shape, qf=net_shape))
-        model = SAC('MlpPolicy', envs, buffer_size=100000, policy_kwargs=policy_kwargs, learning_rate=LR, verbose=0,  tensorboard_log=f"runs/{time_now}")
+        model = SAC('MlpPolicy', envs, buffer_size=100000, learning_rate=LR, verbose=0,  tensorboard_log=f"runs/{time_now}")
         #model = SAC.load('standingBalance/policy_best_model/' + 'myoTorsoReachFixed-v1' + '/' + loaded_model +'/best_model', envs,  buffer_size=100000, learning_rate=LR, verbose=0, tensorboard_log=f"runs/{time_now}")
     
     obs_callback = TensorboardCallback()

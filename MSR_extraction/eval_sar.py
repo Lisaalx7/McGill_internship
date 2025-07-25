@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore", message=".*tostring.*is deprecated.*")
 parser = argparse.ArgumentParser(description="Main script to train an agent")
 
 parser.add_argument("--env_name", type=str, default='myoTorsoPoseFixed-v0', help="environment name")
-parser.add_argument("--policy", type=str, default='2025_07_23_17_17_270PPO', help="policy name")
+parser.add_argument("--policy", type=str, default='2025_07_25_00_37_540SAC', help="policy name")
 
 #myoTorsoExoPoseFixed-v0, myoTorsoPoseFixed-v0
 
@@ -39,11 +39,11 @@ args = parser.parse_args()
 class ActionSpaceWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
-        #self.syn_action_shape = 24 + 80  
         self.syn_action_shape = 24
-        self.action_space = gym.spaces.Box(low=-1., high=1., shape=(self.syn_action_shape,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(low=-1., high=1., shape=(self.syn_action_shape,),dtype=np.float32)
+        #self.observation_space = env.observation_space
         
-        # Define the mapping from reduced to original action space for the first 210 muscles
+        # Define the mapping from reduced to original action space
         self.action_mapping = {
             0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], #psoas major right
             1: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],  #psoas major left
@@ -70,14 +70,11 @@ class ActionSpaceWrapper(gym.ActionWrapper):
             22: [198, 199, 200, 201, 202, 203], #EO left
             23: [204, 205, 206, 207, 208, 209] #IO left
         }
-        
-        # Add the direct mapping for the next 80 muscles (210 to 289)
-        #for i in range(24, 104):
-        #   self.action_mapping[i] = [i + 184]  # Mapping 210 to 290 (offset by 184)
+
 
     def action(self, action):
         # Map the reduced action space to the full action vector
-        assert len(action) == self.syn_action_shape
+        assert len(action) == len(self.action_mapping)
 
         full_action = np.zeros(self.env.action_space.shape)
         for i, indices in self.action_mapping.items():
@@ -125,7 +122,7 @@ model_num = args.policy
 ##model = SAC.load(path+'/../pretrained_policies/' + model_num +
  ##                r'/best_model')
 
-model = PPO.load(path+'/standingBalance/policy_best_model/' + f'myoTorsoPoseFixed-v0/{args.policy}' +
+model = SAC.load(path+'/standingBalance/policy_best_model/' + f'{args.env_name}/{args.policy}' +
                  r'/best_model')
 
 m = []
@@ -171,7 +168,7 @@ for _ in tqdm(range(1)):
     acceleration_dos = []
     #torque_limit_dos = []
     positions_dos_deg = []
-    while (not done) and (step < 300):
+    while (not done) and (step < 150):
           obs = env.unwrapped.obsdict2obsvec(env.unwrapped.obs_dict, env.unwrapped.obs_keys)[1]  
           action, _ = model.predict(obs, deterministic= True)
           obs, reward, done, info, _ = env.step(action)
